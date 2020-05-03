@@ -11,11 +11,15 @@ type ThumbnailSize
   = Small
   | Medium
   | Large
-type alias Photo = { url : String }
-type alias Model = { photos : List Photo, selectedUrl : String, chosenSize : ThumbnailSize }
 
-photoArray : Array Photo
-photoArray = Array.fromList initialModel.photos
+type Status
+  = Loading
+  | Loaded (List Photo) String
+  | Errored String
+
+type alias Photo = { url : String }
+
+type alias Model = { status : Status, chosenSize : ThumbnailSize }
 
 urlPrefix : String
 urlPrefix =
@@ -23,31 +27,35 @@ urlPrefix =
 
 initialModel : Model
 initialModel =
-  {
-    photos =
-      [ { url = "1.jpeg" }
-      , { url = "2.jpeg" }
-      , { url = "3.jpeg" }
-      ]
-  , selectedUrl = "1.jpeg"
+  { status = Loading
   , chosenSize = Medium
   }
 
 view : Model -> Html Msg
 view model =
-  div [ class "content" ]
+  div [ class "content" ] <|
+    case model.status of
+      Loaded photos selectedUrl ->
+        viewLoaded photos selectedUrl model.chosenSize
+      Loading ->
+        [ text "Loading..." ]
+      Errored errorMessage ->
+        [ text ("Error: " ++ errorMessage)]
+
+viewLoaded : List Photo -> String -> ThumbnailSize -> List (Html Msg)
+viewLoaded photos selectedUrl chosenSize =
       [ h1 [] [ text "Photo Groove" ]
       , button
         [ onClick ClickedSurpriseMe ]
         [ text "Surprise Me!" ]
       , h3 [] [ text "Thumbnail size:" ]
       , div [ id "choose-size" ]
-        (List.map (viewSizeChooser model.chosenSize) [ Small, Medium, Large ])
-      , div [ id "thumbnails", class (sizeToClass model.chosenSize) ]
-        (List.map (viewThumbnail model.selectedUrl) model.photos)
+        (List.map (viewSizeChooser chosenSize) [ Small, Medium, Large ])
+      , div [ id "thumbnails", class (sizeToClass chosenSize) ]
+        (List.map (viewThumbnail selectedUrl) photos)
       , img
         [ class "large"
-        , src (urlPrefix ++ "large/" ++ model.selectedUrl)
+        , src (urlPrefix ++ "large/" ++ selectedUrl)
         ]
         []
       ]
@@ -81,35 +89,43 @@ viewSizeChooser chosenSize size =
     , text (sizeToString size)
     ]
 
-getPhotoUrl : Int -> String
-getPhotoUrl index =
-  case Array.get index photoArray of
-    Just photo ->
-      photo.url
-    Nothing ->
-      ""
-
-randomPhotoPicker : Random.Generator Int
-randomPhotoPicker =
-  Random.int 0 (Array.length photoArray - 1)
-
 type Msg
   = ClickedPhoto String
   | ClickedSize ThumbnailSize
   | ClickedSurpriseMe
-  | GotSelectedIndex Int
+  | GotRandomPhoto Photo
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
-    GotSelectedIndex index ->
-      ( { model | selectedUrl = getPhotoUrl index }, Cmd.none )
+    GotRandomPhoto photo ->
+      ( { model | status = selectUrl photo.url model.status }, Cmd.none )
     ClickedPhoto url ->
-      ( { model | selectedUrl = url }, Cmd.none )
+      ( { model | status = selectUrl url model.status }, Cmd.none )
     ClickedSurpriseMe ->
-      ( model, Random.generate GotSelectedIndex randomPhotoPicker )
+      case model.status of
+        Loaded (firstPhoto::otherPhotos) _ ->
+          Tuple.pair model <|
+            Random.generate GotRandomPhoto <|
+            Random.uniform firstPhoto otherPhotos
+        Loading ->
+          ( model, Cmd.none )
+        Errored erorMessage ->
+          ( model, Cmd.none )
+        Loaded [] _ ->
+          ( model, Cmd.none )
     ClickedSize size ->
       ( { model | chosenSize = size }, Cmd.none )
+
+selectUrl : String -> Status -> Status
+selectUrl url status =
+  case status of
+    Loaded photos _ ->
+      Loaded photos url
+    Loading ->
+      status
+    Errored errorMessage ->
+      status
 
 main : Program () Model Msg
 main =
