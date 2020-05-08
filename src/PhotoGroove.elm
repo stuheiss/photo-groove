@@ -4,7 +4,6 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
-import Array exposing (Array)
 import Random
 import Http
 
@@ -20,7 +19,10 @@ type Status
 
 type alias Photo = { url : String }
 
-type alias Model = { status : Status, chosenSize : ThumbnailSize }
+type alias Model =
+  {  status : Status
+  ,  chosenSize : ThumbnailSize
+  }
 
 urlPrefix : String
 urlPrefix =
@@ -127,7 +129,7 @@ update msg model =
             Random.uniform firstPhoto otherPhotos
         Loading ->
           ( model, Cmd.none )
-        Errored erorMessage ->
+        Errored _ ->
           ( model, Cmd.none )
         Loaded [] _ ->
           ( model, Cmd.none )
@@ -141,7 +143,7 @@ selectUrl url status =
       Loaded photos url
     Loading ->
       status
-    Errored errorMessage ->
+    Errored _ ->
       status
 
 main : Program () Model Msg
