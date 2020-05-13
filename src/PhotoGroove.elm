@@ -53,6 +53,7 @@ type alias Model =
   , hue : Int
   , ripple : Int
   , noise : Int
+  , sparkle : Int
   }
 
 urlPrefix : String
@@ -64,9 +65,10 @@ initialModel =
   { status = Loading
   , activity = ""
   , chosenSize = Medium
-  , hue = 5
-  , ripple = 5
-  , noise = 5
+  , hue = 0
+  , ripple = 0
+  , noise = 0
+  , sparkle = 0
   }
 
 initialCmd : Cmd Msg
@@ -111,6 +113,7 @@ viewLoaded photos selectedUrl model =
     [ viewFilter SlidHue "Hue" model.hue
     , viewFilter SlidRipple "Ripple" model.ripple
     , viewFilter SlidNoise "Noise" model.noise
+    , viewFilter SlidSparkle "Sparkle" model.sparkle
     ]
   , h3 [] [ text "Thumbnail size:" ]
   , div [ id "choose-size" ]
@@ -118,7 +121,6 @@ viewLoaded photos selectedUrl model =
   , div [ id "thumbnails", class (sizeToClass model.chosenSize) ]
     (List.map (viewThumbnail selectedUrl) photos)
   , canvas [ id "main-canvas", class "large" ] []
-  -- , img [ class "large", src (urlPrefix ++ "large/" ++ selectedUrl) ] []
   ]
 
 viewThumbnail : String -> Photo -> Html Msg
@@ -161,6 +163,7 @@ type Msg
   | SlidHue Int
   | SlidRipple Int
   | SlidNoise Int
+  | SlidSparkle Int
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -199,6 +202,8 @@ update msg model =
       applyFilters { model | ripple = ripple }
     SlidNoise noise ->
       applyFilters { model | noise = noise }
+    SlidSparkle sparkle ->
+      applyFilters { model | sparkle = sparkle }
 
 applyFilters : Model -> ( Model, Cmd Msg )
 applyFilters model =
@@ -209,6 +214,7 @@ applyFilters model =
           [ { name = "Hue", amount = toFloat model.hue / 11 }
           , { name = "Ripple", amount = toFloat model.ripple / 11 }
           , { name = "Noise", amount = toFloat model.noise / 11 }
+          , { name = "Sparkle", amount = toFloat model.sparkle / 11 }
           ]
         url =
           urlPrefix ++ "large/" ++ selectedUrl
